@@ -269,6 +269,24 @@ print(f"Response: {response.json()}")</code></pre>
             <h4>Response</h4>
             <pre id="clear-response" class="response-area"></pre>
         </div>
+
+        <!-- Stress Test Section -->
+        <div class="endpoint-card">
+            <h2>Stress Test: Check-in Multiple IDs</h2>
+            <p>This tool allows you to simulate multiple check-ins to test the API's performance.</p>
+
+            <label for="num-ids">Number of IDs to generate (TEST0001 to TESTxxxx):</label>
+            <input type="number" id="num-ids" value="100" min="1" max="9999">
+
+            <label for="pause-secs" style="margin-top: 15px; display: block;">Pause between requests (seconds):</label>
+            <input type="number" id="pause-secs" value="0.5" min="0" step="0.1">
+
+            <button id="start-stress-test-btn">Start Stress Test</button>
+            <button id="stop-stress-test-btn" style="background-color: #ffc107; color: #333;" disabled>Stop Stress Test</button>
+
+            <h4>Results</h4>
+            <pre id="stress-test-response" class="response-area"></pre>
+        </div>
     </div>
 
     <script>
@@ -359,6 +377,111 @@ print(f"Response: {response.json()}")</code></pre>
                 sendApiRequest('clear', 'POST', null, 'clear-response');
             }
         });
+
+        // --- Stress Test Logic ---
+        let stressTestRunning = false;
+        let currentStressTestId = 0;
+        let stressTestInterval = null;
+
+        const startStressTestBtn = document.getElementById('start-stress-test-btn');
+        const stopStressTestBtn = document.getElementById('stop-stress-test-btn');
+        const numIdsInput = document.getElementById('num-ids');
+        const pauseSecsInput = document.getElementById('pause-secs');
+        const stressTestResponseArea = document.getElementById('stress-test-response');
+
+        const updateStressTestButtons = () => {
+            startStressTestBtn.disabled = stressTestRunning;
+            stopStressTestBtn.disabled = !stressTestRunning;
+            numIdsInput.disabled = stressTestRunning;
+            pauseSecsInput.disabled = stressTestRunning;
+        };
+
+        const runStressTest = async () => {
+            const numIds = parseInt(numIdsInput.value, 10);
+            const pauseMs = parseFloat(pauseSecsInput.value) * 1000;
+
+            if (isNaN(numIds) || numIds <= 0 || numIds > 9999) {
+                stressTestResponseArea.textContent = 'Error: Number of IDs must be between 1 and 9999.';
+                stressTestResponseArea.classList.add('error');
+                return;
+            }
+            if (isNaN(pauseMs) || pauseMs < 0) {
+                stressTestResponseArea.textContent = 'Error: Pause must be a non-negative number.';
+                stressTestResponseArea.classList.add('error');
+                return;
+            }
+
+            stressTestRunning = true;
+            updateStressTestButtons();
+            stressTestResponseArea.textContent = 'Stress test started...';
+            stressTestResponseArea.classList.remove('error', 'success');
+
+            currentStressTestId = 0;
+
+            const executeNextRequest = async () => {
+                if (!stressTestRunning || currentStressTestId >= numIds) {
+                    stopStressTest();
+                    stressTestResponseArea.textContent += '\nStress test finished.';
+                    stressTestResponseArea.classList.add('success');
+                    return;
+                }
+
+                currentStressTestId++;
+                const id = `TEST${String(currentStressTestId).padStart(4, '0')}`;
+                const body = { id: id };
+
+                try {
+                    const apiUrl = document.getElementById('api-url').value;
+                    const apiToken = document.getElementById('api-token').value;
+
+                    if (!apiUrl || !apiToken) {
+                        stressTestResponseArea.textContent += `\nError: API URL or Token not set. Stopping test.`;
+                        stressTestResponseArea.classList.add('error');
+                        stopStressTest();
+                        return;
+                    }
+
+                    const fullUrl = `${apiUrl}?action=checkin`;
+                    const headers = {
+                        'Content-Type': 'application/json',
+                        'X-API-Token': apiToken
+                    };
+
+                    const response = await fetch(fullUrl, {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify(body)
+                    });
+
+                    const responseData = await response.json();
+                    stressTestResponseArea.textContent += `\n[${currentStressTestId}/${numIds}] ID: ${id} -> Status: ${response.status} - ${responseData.status || 'N/A'} - ${responseData.message || 'N/A'}`;
+                } catch (error) {
+                    stressTestResponseArea.textContent += `\n[${currentStressTestId}/${numIds}] ID: ${id} -> Error: ${error.message}`;
+                }
+
+                if (stressTestRunning) {
+                    stressTestInterval = setTimeout(executeNextRequest, pauseMs);
+                }
+            };
+
+            executeNextRequest();
+        };
+
+        const stopStressTest = () => {
+            stressTestRunning = false;
+            if (stressTestInterval) {
+                clearTimeout(stressTestInterval);
+                stressTestInterval = null;
+            }
+            updateStressTestButtons();
+            stressTestResponseArea.textContent += '\nStress test stopped by user.';
+        };
+
+        startStressTestBtn.addEventListener('click', runStressTest);
+        stopStressTestBtn.addEventListener('click', stopStressTest);
+
+        // Initial button state
+        updateStressTestButtons();
     </script>
 </body>
 </html>
