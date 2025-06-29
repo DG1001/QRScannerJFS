@@ -26,10 +26,8 @@ define('TOKEN_FILE', __DIR__ . '/.apitoken'); // File containing the secret toke
 // Server-side ID validation rules
 define('ID_REGEX', '/^[a-zA-Z0-9-]{5,50}$/');
 
-// Optional "Guest List"
-define('GUEST_LIST', [
-    "guest-12345", "staff-abcde", "vip-99999", "event-007-agent"
-]);
+// Optional "Guest List" - set to null to disable
+define('GUEST_LIST', null);
 
 
 // --- 2. Helper Functions ---
