@@ -1,3 +1,12 @@
+# --- CORS HEADERS ---
+# Allow requests from any origin.
+Header set Access-Control-Allow-Origin "*"
+
+# Allow specific headers and methods.
+Header set Access-Control-Allow-Methods "POST, GET, OPTIONS"
+Header set Access-Control-Allow-Headers "Content-Type, X-API-Token"
+
+# --- SECURITY RULES ---
 # Block access to the .apitoken file specifically
 <Files ".apitoken">
     Require all denied
