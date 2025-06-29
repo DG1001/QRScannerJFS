@@ -61,11 +61,18 @@
         /* Code Blocks */
         code {
             font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
-            background-color: #e9ecef;
+            background-color: #e9ecef; /* Light background for inline code */
             padding: 2px 6px;
             border-radius: 4px;
             font-size: 0.9em;
             color: #212529; /* Darker text for better contrast */
+        }
+        /* Styling for code blocks within <pre> tags */
+        pre code {
+            background-color: #2c3e50; /* Explicitly set to match <pre> background */
+            color: #f8f9fa; /* Explicitly set to match <pre> text color */
+            padding: 0; /* Remove padding to blend with <pre> */
+            border-radius: 0; /* Remove border-radius to blend with <pre> */
         }
         pre {
             background-color: #2c3e50;
@@ -143,11 +150,38 @@
 }</code></pre>
 
             <h4>cURL Example</h4>
-            <pre><code>curl -X POST \
+            <details>
+                <summary>Show cURL Example</summary>
+                <pre><code>curl -X POST \
   -H "Content-Type: application/json" \
   -H "X-API-Token: YOUR_API_TOKEN" \
   -d '{"id": "example-id-123"}' \
   "YOUR_API_URL?action=checkin"</code></pre>
+            </details>
+
+            <h4>Python Example</h4>
+            <details>
+                <summary>Show Python Example</summary>
+                <pre><code>import requests
+import json
+
+api_url = "YOUR_API_URL"
+api_token = "YOUR_API_TOKEN"
+
+headers = {
+    "Content-Type": "application/json",
+    "X-API-Token": api_token
+}
+
+# Check-in an ID
+id_to_checkin = "example-id-123"
+payload = {"id": id_to_checkin}
+
+response = requests.post(f"{api_url}?action=checkin", headers=headers, data=json.dumps(payload))
+
+print(f"Status Code: {response.status_code}")
+print(f"Response: {response.json()}")</code></pre>
+            </details>
 
             <h4>Interactive Test</h4>
             <label for="checkin-id">ID to Check In:</label>
@@ -164,9 +198,31 @@
             <p>Retrieves a list of all unique IDs that have been successfully checked in.</p>
 
             <h4>cURL Example</h4>
-            <pre><code>curl -X GET \
+            <details>
+                <summary>Show cURL Example</summary>
+                <pre><code>curl -X GET \
   -H "X-API-Token: YOUR_API_TOKEN" \
   "YOUR_API_URL?action=registered-ids"</code></pre>
+            </details>
+
+            <h4>Python Example</h4>
+            <details>
+                <summary>Show Python Example</summary>
+                <pre><code>import requests
+
+api_url = "YOUR_API_URL"
+api_token = "YOUR_API_TOKEN"
+
+headers = {
+    "X-API-Token": api_token
+}
+
+# Get registered IDs
+response = requests.get(f"{api_url}?action=registered-ids", headers=headers)
+
+print(f"Status Code: {response.status_code}")
+print(f"Response: {response.json()}")</code></pre>
+            </details>
 
             <h4>Interactive Test</h4>
             <button id="get-ids-btn">Send Request</button>
@@ -181,9 +237,31 @@
             <p><strong>Warning:</strong> This is a destructive action that removes all currently registered IDs from the system.</p>
 
             <h4>cURL Example</h4>
-            <pre><code>curl -X POST \
+            <details>
+                <summary>Show cURL Example</summary>
+                <pre><code>curl -X POST \
   -H "X-API-Token: YOUR_API_TOKEN" \
   "YOUR_API_URL?action=clear"</code></pre>
+            </details>
+
+            <h4>Python Example</h4>
+            <details>
+                <summary>Show Python Example</summary>
+                <pre><code>import requests
+
+api_url = "YOUR_API_URL"
+api_token = "YOUR_API_TOKEN"
+
+headers = {
+    "X-API-Token": api_token
+}
+
+# Clear all IDs
+response = requests.post(f"{api_url}?action=clear", headers=headers)
+
+print(f"Status Code: {response.status_code}")
+print(f"Response: {response.json()}")</code></pre>
+            </details>
 
             <h4>Interactive Test</h4>
             <button id="clear-btn" class="clear-btn">Send Request to Clear IDs</button>
