@@ -1,0 +1,9 @@
+# Block access to the .apitoken file specifically
+<Files ".apitoken">
+    Require all denied
+</Files>
+
+# Block access to registered_ids.json
+<Files "registered_ids.json">
+    Require all denied
+</Files>
