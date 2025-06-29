@@ -39,6 +39,16 @@ jobs:
       - name: Build application
         run: npm run build
 
+      - name: Check for unprocessed env variables in build output
+        run: |
+          echo "Searching for VITE_API_URL string in dist folder..."
+          if grep -r "VITE_API_URL" ./dist; then
+            echo "Error: VITE_API_URL string found in build output. Vite did not replace the environment variable."
+            exit 1
+          else
+            echo "Success: VITE_API_URL string not found. Environment variable was likely replaced correctly."
+          fi
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
