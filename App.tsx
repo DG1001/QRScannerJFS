@@ -9,10 +9,27 @@ import { QrCodeIcon } from './components/icons/QrCodeIcon';
 import { CheckCircleIcon } from './components/icons/CheckCircleIcon';
 import { ExclamationTriangleIcon } from './components/icons/ExclamationTriangleIcon';
 import { XCircleIcon } from './components/icons/XCircleIcon';
+import PinInput from './components/PinInput'; // Import the new PinInput component
 
 const MESSAGE_DISPLAY_DURATION = 3000; // 3 seconds
 
 const App: React.FC = () => {
+  // Read PIN code from environment variables
+  const CORRECT_PIN = import.meta.env.VITE_PIN_CODE;
+
+  // State to manage PIN verification
+  const [isPinVerified, setIsPinVerified] = useState<boolean>(() => {
+    // Check local storage on initial load
+    // If CORRECT_PIN is not set, assume no PIN is required and verify immediately.
+    if (!CORRECT_PIN) return true;
+    return localStorage.getItem('pin_verified') === 'true';
+  });
+
+  const handlePinVerified = useCallback(() => {
+    setIsPinVerified(true);
+    localStorage.setItem('pin_verified', 'true');
+  }, []);
+
   const [scannedId, setScannedId] = useState<string | null>(null);
   const [apiResponseMessage, setApiResponseMessage] = useState<string | null>(null);
   const [apiResponseStatus, setApiResponseStatus] = useState<ApiResponseStatus | null>(null);
@@ -113,7 +130,7 @@ const App: React.FC = () => {
          // Delay showing scanner again to allow message to be read
          setTimeout(() => {
             if(isScanningActive) setShowScanner(true); // Check again in case user stopped scanning
-         }, MESSAGE_DISPLAY_DURATION - 500); // Show slightly before message clears
+         }, MESSAGE_DISPLAY_DURATION - 500);
       }
     }
   }, [isScanningActive, scannedIdsLog, lastProcessedId, displayMessage]);
@@ -195,6 +212,15 @@ const App: React.FC = () => {
   const currentMessage = apiResponseMessage || generalError;
   const currentStatus = generalError ? 'error' : apiResponseStatus;
 
+  // Conditional rendering based on PIN verification
+  if (!isPinVerified) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-700 text-white flex flex-col items-center justify-center p-4">
+        <PinInput correctPin={CORRECT_PIN} onPinVerified={handlePinVerified} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-700 text-white flex flex-col items-center p-4 selection:bg-sky-500 selection:text-white">
       <header className="w-full max-w-md text-center my-8">
@@ -268,5 +294,3 @@ const App: React.FC = () => {
     </div>
   );
 };
-
-export default App;
