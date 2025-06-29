@@ -29,6 +29,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Verify .env file
+        run: |
+          echo "Listing files..."
+          ls -la
+          echo "Verifying .env content..."
+          cat .env
+
       - name: Build application
         run: npm run build
 
