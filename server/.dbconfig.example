@@ -1,0 +1,6 @@
+{
+  "host": "localhost",
+  "database": "qr_checkin",
+  "username": "your_username",
+  "password": "your_password"
+}

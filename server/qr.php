@@ -19,9 +19,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
   exit(0);
 }
 
-// Define paths for data and the security token
-define('DATA_FILE', __DIR__ . '/registered_ids.json');
+// Define paths for the security token and database config
 define('TOKEN_FILE', __DIR__ . '/.apitoken'); // File containing the secret token
+define('DB_CONFIG_FILE', __DIR__ . '/.dbconfig'); // File containing database configuration
 
 // Server-side ID validation rules
 define('ID_REGEX', '/^[a-zA-Z0-9-]{5,50}$/');
@@ -38,19 +38,150 @@ function send_json_response($data, $statusCode = 200) {
     exit();
 }
 
-function get_registered_ids_from_file() {
-    if (!file_exists(DATA_FILE)) return [];
-    $json_data = file_get_contents(DATA_FILE);
-    return json_decode($json_data, true) ?: [];
-}
-
-function save_registered_ids_to_file($ids) {
-    $json_data = json_encode(array_values($ids), JSON_PRETTY_PRINT);
-    if (file_put_contents(DATA_FILE, $json_data) === false) {
-        error_log("Failed to write to data file: " . DATA_FILE);
+/**
+ * Get database configuration from config file
+ * @return array|false Database config array or false if not found
+ */
+function get_db_config() {
+    if (!file_exists(DB_CONFIG_FILE)) {
+        error_log("DATABASE ERROR: Config file not found at " . DB_CONFIG_FILE);
         return false;
     }
-    return true;
+    
+    $config_data = file_get_contents(DB_CONFIG_FILE);
+    $config = json_decode($config_data, true);
+    
+    if (!$config || !isset($config['host'], $config['database'], $config['username'], $config['password'])) {
+        error_log("DATABASE ERROR: Invalid config format in " . DB_CONFIG_FILE);
+        return false;
+    }
+    
+    return $config;
+}
+
+/**
+ * Get database connection
+ * @return PDO|false Database connection or false on failure
+ */
+function get_db_connection() {
+    $config = get_db_config();
+    if (!$config) return false;
+    
+    try {
+        $dsn = "mysql:host={$config['host']};dbname={$config['database']};charset=utf8mb4";
+        $pdo = new PDO($dsn, $config['username'], $config['password'], [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ]);
+        return $pdo;
+    } catch (PDOException $e) {
+        error_log("DATABASE CONNECTION ERROR: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Initialize database table if it doesn't exist
+ * @return bool Success status
+ */
+function init_database() {
+    $pdo = get_db_connection();
+    if (!$pdo) return false;
+    
+    try {
+        $sql = "CREATE TABLE IF NOT EXISTS registered_ids (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            scanned_id VARCHAR(50) NOT NULL UNIQUE,
+            registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_scanned_id (scanned_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+        
+        $pdo->exec($sql);
+        return true;
+    } catch (PDOException $e) {
+        error_log("DATABASE INIT ERROR: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Get all registered IDs from database
+ * @return array Array of registered IDs
+ */
+function get_registered_ids_from_db() {
+    $pdo = get_db_connection();
+    if (!$pdo) return [];
+    
+    try {
+        $stmt = $pdo->prepare("SELECT scanned_id FROM registered_ids ORDER BY scanned_id ASC");
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return $results ?: [];
+    } catch (PDOException $e) {
+        error_log("DATABASE SELECT ERROR: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Check if ID is already registered
+ * @param string $id The ID to check
+ * @return bool True if already registered
+ */
+function is_id_registered($id) {
+    $pdo = get_db_connection();
+    if (!$pdo) return false;
+    
+    try {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM registered_ids WHERE scanned_id = ?");
+        $stmt->execute([$id]);
+        return $stmt->fetchColumn() > 0;
+    } catch (PDOException $e) {
+        error_log("DATABASE CHECK ERROR: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Add new ID to database
+ * @param string $id The ID to register
+ * @return bool Success status
+ */
+function add_registered_id($id) {
+    $pdo = get_db_connection();
+    if (!$pdo) return false;
+    
+    try {
+        $stmt = $pdo->prepare("INSERT INTO registered_ids (scanned_id) VALUES (?)");
+        $stmt->execute([$id]);
+        return true;
+    } catch (PDOException $e) {
+        if ($e->getCode() == 23000) { // Duplicate entry
+            error_log("DATABASE DUPLICATE: ID '{$id}' already exists");
+            return false;
+        }
+        error_log("DATABASE INSERT ERROR: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Clear all registered IDs from database
+ * @return bool Success status
+ */
+function clear_all_registered_ids() {
+    $pdo = get_db_connection();
+    if (!$pdo) return false;
+    
+    try {
+        $stmt = $pdo->prepare("DELETE FROM registered_ids");
+        $stmt->execute();
+        return true;
+    } catch (PDOException $e) {
+        error_log("DATABASE CLEAR ERROR: " . $e->getMessage());
+        return false;
+    }
 }
 
 /**
@@ -88,6 +219,11 @@ function validate_token() {
 
 // --- 3. API Entry Point ---
 
+// Initialize database (create table if doesn't exist)
+if (!init_database()) {
+    send_json_response(['status' => 'error', 'message' => 'Database initialization failed.'], 500);
+}
+
 // First, validate the request token. This is the gatekeeper for the entire API.
 validate_token();
 
@@ -101,28 +237,38 @@ switch ($action) {
         $requestBody = json_decode(file_get_contents('php://input'), true);
         $scannedId = isset($requestBody['id']) ? trim($requestBody['id']) : '';
 
-        if (empty($scannedId) || !preg_match(ID_REGEX, $scannedId)) send_json_response(['status' => 'error', 'message' => 'Invalid request: ID has an invalid format.'], 400);
-        if (GUEST_LIST !== null && !in_array($scannedId, GUEST_LIST)) send_json_response(['status' => 'id not known', 'message' => "ID '{$scannedId}' is not recognized."], 404);
+        if (empty($scannedId) || !preg_match(ID_REGEX, $scannedId)) {
+            send_json_response(['status' => 'error', 'message' => 'Invalid request: ID has an invalid format.'], 400);
+        }
+        
+        if (GUEST_LIST !== null && !in_array($scannedId, GUEST_LIST)) {
+            send_json_response(['status' => 'id not known', 'message' => "ID '{$scannedId}' is not recognized."], 404);
+        }
 
-        $registeredIds = get_registered_ids_from_file();
-        if (in_array($scannedId, $registeredIds)) send_json_response(['status' => 'already registered', 'message' => "ID '{$scannedId}' was already checked in."], 200);
+        if (is_id_registered($scannedId)) {
+            send_json_response(['status' => 'already registered', 'message' => "ID '{$scannedId}' was already checked in."], 200);
+        }
 
-        $registeredIds[] = $scannedId;
-        if (save_registered_ids_to_file($registeredIds)) send_json_response(['status' => 'ok', 'message' => "ID '{$scannedId}' checked in successfully."], 200);
-        else send_json_response(['status' => 'error', 'message' => 'An unexpected error occurred.'], 500);
+        if (add_registered_id($scannedId)) {
+            send_json_response(['status' => 'ok', 'message' => "ID '{$scannedId}' checked in successfully."], 200);
+        } else {
+            send_json_response(['status' => 'error', 'message' => 'An unexpected error occurred while registering the ID.'], 500);
+        }
         break;
 
     case 'registered-ids':
         if ($requestMethod !== 'GET') send_json_response(['status' => 'error', 'message' => 'Method Not Allowed.'], 405);
-        $registeredIds = get_registered_ids_from_file();
-        sort($registeredIds);
+        $registeredIds = get_registered_ids_from_db();
         send_json_response($registeredIds, 200);
         break;
 
     case 'clear':
         if ($requestMethod !== 'POST') send_json_response(['status' => 'error', 'message' => 'Method Not Allowed.'], 405);
-        if (save_registered_ids_to_file([])) send_json_response(['status' => 'ok', 'message' => 'All registered IDs have been cleared.'], 200);
-        else send_json_response(['status' => 'error', 'message' => 'Failed to clear the list of registered IDs.'], 500);
+        if (clear_all_registered_ids()) {
+            send_json_response(['status' => 'ok', 'message' => 'All registered IDs have been cleared.'], 200);
+        } else {
+            send_json_response(['status' => 'error', 'message' => 'Failed to clear the list of registered IDs.'], 500);
+        }
         break;
 
     default:
