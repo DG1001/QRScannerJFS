@@ -12,6 +12,8 @@ import { XCircleIcon } from './components/icons/XCircleIcon';
 import PinInput from './components/PinInput'; // Import the new PinInput component
 
 const MESSAGE_DISPLAY_DURATION = 3000; // 3 seconds
+const SUCCESS_MESSAGE_DURATION = 5000; // 5 seconds for success messages
+const WARNING_MESSAGE_DURATION = 4000; // 4 seconds for warning messages
 
 const App: React.FC = () => {
   // Read PIN code from environment variables
@@ -62,13 +64,19 @@ const App: React.FC = () => {
       setApiResponseMessage(message);
       setApiResponseStatus(status);
     }
+    
+    // Determine display duration based on message type
+    let duration = MESSAGE_DISPLAY_DURATION;
+    if (status === 'ok') duration = SUCCESS_MESSAGE_DURATION;
+    else if (status === 'already registered') duration = WARNING_MESSAGE_DURATION;
+    
     messageTimeoutRef.current = window.setTimeout(() => {
       clearMessage();
       // If scanning is active, ensure scanner is shown after message clears
       if (isScanningActive && !showScanner) {
         setShowScanner(true);
       }
-    }, MESSAGE_DISPLAY_DURATION);
+    }, duration);
   }, [clearMessage, isScanningActive, showScanner]);
 
 
@@ -84,7 +92,7 @@ const App: React.FC = () => {
     const id = extractIdFromUrl(decodedText);
 
     if (!id) {
-      displayMessage("Invalid QR code: Does not contain a valid check-in URL.", 'error', true);
+      displayMessage("❌ Invalid QR code: Does not contain a valid check-in URL.", 'error', true);
       setScannedId(null);
       setIsLoading(false);
       if (isScanningActive) setShowScanner(true); // Re-show scanner if still active
@@ -95,18 +103,18 @@ const App: React.FC = () => {
 
     // Prevent immediate re-scan of the exact same QR code from being processed
     if (id === lastProcessedId) {
-      displayMessage(`ID "${id}" was just processed. Ignoring duplicate scan.`, 'already registered');
+      displayMessage(`🔄 Duplicate: ID "${id}" was just processed. Ignoring duplicate scan.`, 'already registered');
       setIsLoading(false);
       setLastProcessedId(null); // Reset to allow next distinct scan
-      if (isScanningActive) setTimeout(() => setShowScanner(true), MESSAGE_DISPLAY_DURATION);
+      if (isScanningActive) setTimeout(() => setShowScanner(true), WARNING_MESSAGE_DURATION);
       return;
     }
 
     if (scannedIdsLog.has(id)) {
-      displayMessage(`Warning: ID "${id}" has already been checked in.`, 'already registered');
+      displayMessage(`⚠️ Already Registered: ID "${id}" has already been checked in.`, 'already registered');
       setIsLoading(false);
       setLastProcessedId(id); // Mark as processed for debounce
-      if (isScanningActive) setTimeout(() => setShowScanner(true), MESSAGE_DISPLAY_DURATION);
+      if (isScanningActive) setTimeout(() => setShowScanner(true), WARNING_MESSAGE_DURATION);
       return;
     }
 
@@ -114,30 +122,30 @@ const App: React.FC = () => {
       const response = await sendCheckinId(id);
       if (response.status === 'ok') {
         setScannedIdsLog(prevLog => new Set(prevLog).add(id));
-        displayMessage(`Checked In: ${id} - ${response.message}`, 'ok');
+        displayMessage(`✅ Checked In: ${id} - ${response.message}`, 'ok');
         setLastProcessedId(id);
       } else {
-        displayMessage(`Problem with ID "${id}": ${response.message}`, response.status, response.status === 'error');
+        displayMessage(`❌ Problem with ID "${id}": ${response.message}`, response.status, response.status === 'error');
          // Do not set lastProcessedId here if it's an API error or ID not known,
          // allowing a retry if it was a transient issue.
       }
     } catch (e: any) {
       const apiErrorMessage = e.message || "Failed to contact service.";
-      displayMessage(`API Error: ${apiErrorMessage}`, 'error', true);
+      displayMessage(`🔗 API Error: ${apiErrorMessage}`, 'error', true);
     } finally {
       setIsLoading(false);
       if (isScanningActive) {
          // Delay showing scanner again to allow message to be read
          setTimeout(() => {
             if(isScanningActive) setShowScanner(true); // Check again in case user stopped scanning
-         }, MESSAGE_DISPLAY_DURATION - 500);
+         }, SUCCESS_MESSAGE_DURATION - 500);
       }
     }
   }, [isScanningActive, scannedIdsLog, lastProcessedId, displayMessage]);
 
   const handleScanError = useCallback((errorMessage: string) => {
     setShowScanner(false); // Hide scanner to show message
-    displayMessage(`Scanner Error: ${errorMessage}`, 'error', true);
+    displayMessage(`📷 Scanner Error: ${errorMessage}`, 'error', true);
     if (isScanningActive) {
       setTimeout(() => {
         if(isScanningActive) setShowScanner(true);
