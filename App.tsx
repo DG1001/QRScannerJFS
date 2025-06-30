@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Scanner from './components/Scanner';
 import { Button } from './components/Button';
 import { LoadingSpinner } from './components/LoadingSpinner';
-import { sendCheckinId, getScannedIdsList } from './services/apiService';
+import { sendCheckinId } from './services/apiService';
 import { ID_REGEX } from './constants';
 import { ApiResponseStatus, CheckinApiResponse } from './types';
 import { QrCodeIcon } from './components/icons/QrCodeIcon';
@@ -171,12 +171,6 @@ const App: React.FC = () => {
   }, [isScanningActive, showScanner, isLoading, apiResponseMessage, generalError]);
 
 
-  const handleShowScannedIds = () => {
-    const idsArray = Array.from(scannedIdsLog);
-    const jsonOutput = getScannedIdsList(idsArray);
-    console.log("Scanned IDs:", jsonOutput);
-    alert(`Scanned IDs (${idsArray.length}):\n\n${jsonOutput}\n\n(Also logged to console)`);
-  };
 
 
   const getResponseStyle = (status: ApiResponseStatus | null): string => {
@@ -266,14 +260,6 @@ const App: React.FC = () => {
         )}
 
 
-        <Button
-          onClick={handleShowScannedIds}
-          variant="secondary"
-          className="w-full mt-4"
-          disabled={scannedIdsLog.size === 0}
-        >
-          Show {scannedIdsLog.size} Scanned ID(s)
-        </Button>
       </main>
 
       {showScanner && isScanningActive && (

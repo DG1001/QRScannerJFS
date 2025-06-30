@@ -64,8 +64,3 @@ export const sendCheckinId = async (id: string): Promise<CheckinApiResponse> => 
 };
 
 
-// This function isn't strictly a "REST endpoint" but simulates fetching the data
-// that would be exposed by such an endpoint. The actual list is managed in App.tsx.
-export const getScannedIdsList = (ids: string[]): string => {
-  return JSON.stringify(ids, null, 2);
-};
