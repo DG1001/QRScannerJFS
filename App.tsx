@@ -21,7 +21,9 @@ let audioContext: AudioContext | null = null;
 // Wake Lock API for preventing screen sleep during scanning
 let wakeLock: any = null;
 
-const requestWakeLock = async () => {
+const requestWakeLock = async (enabled: boolean) => {
+  if (!enabled) return;
+  
   try {
     if ('wakeLock' in navigator) {
       wakeLock = await (navigator as any).wakeLock.request('screen');
@@ -163,7 +165,27 @@ const App: React.FC = () => {
   const [scannedIdsLog, setScannedIdsLog] = useState<Set<string>>(new Set());
   const [lastProcessedId, setLastProcessedId] = useState<string | null>(null); // For immediate duplicate prevention
 
+  // Wake lock preference state - default to false for better compatibility
+  const [wakeLockEnabled, setWakeLockEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('wake_lock_enabled') === 'true';
+  });
+
   const messageTimeoutRef = useRef<number | null>(null);
+
+  const toggleWakeLock = useCallback(() => {
+    const newWakeLockEnabled = !wakeLockEnabled;
+    setWakeLockEnabled(newWakeLockEnabled);
+    localStorage.setItem('wake_lock_enabled', newWakeLockEnabled.toString());
+    
+    // If wake lock is being disabled and currently active, release it
+    if (!newWakeLockEnabled && wakeLock) {
+      releaseWakeLock();
+    }
+    // If wake lock is being enabled and scanning is active, request it
+    if (newWakeLockEnabled && isScanningActive) {
+      requestWakeLock(true);
+    }
+  }, [wakeLockEnabled, isScanningActive]);
 
   const clearMessage = useCallback(() => {
     if (messageTimeoutRef.current) {
@@ -290,8 +312,8 @@ const App: React.FC = () => {
       if (newIsScanningActive) {
         setShowScanner(true);
         setLastProcessedId(null); // Reset debounce on new "start"
-        // Request wake lock to prevent screen sleep during scanning
-        requestWakeLock();
+        // Request wake lock to prevent screen sleep during scanning (if enabled)
+        requestWakeLock(wakeLockEnabled);
       } else {
         setShowScanner(false);
         // Release wake lock when scanning stops
@@ -382,6 +404,29 @@ const App: React.FC = () => {
           <QrCodeIcon className="w-5 h-5" />
           <span>{isScanningActive ? (isLoading ? 'Processing...' : 'Stop Scanning') : 'Start Scanning'}</span>
         </Button>
+
+        {/* Wake Lock Toggle */}
+        <div className="flex items-center justify-between p-3 bg-slate-700 rounded-md">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-slate-300">Keep screen on</span>
+            {wakeLock && (
+              <span className="text-xs text-green-400 bg-green-900/30 px-2 py-1 rounded">Active</span>
+            )}
+          </div>
+          <button
+            onClick={toggleWakeLock}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              wakeLockEnabled ? 'bg-sky-600' : 'bg-slate-600'
+            }`}
+            aria-label="Toggle keep screen on"
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                wakeLockEnabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
         
         {isLoading && <LoadingSpinner />}
 
