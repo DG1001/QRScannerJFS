@@ -18,6 +18,32 @@ const WARNING_MESSAGE_DURATION = 4000; // 4 seconds for warning messages
 // Global audio context for iOS compatibility
 let audioContext: AudioContext | null = null;
 
+// Wake Lock API for preventing screen sleep during scanning
+let wakeLock: any = null;
+
+const requestWakeLock = async () => {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await (navigator as any).wakeLock.request('screen');
+      console.log('Screen wake lock activated');
+      
+      wakeLock.addEventListener('release', () => {
+        console.log('Screen wake lock released');
+      });
+    }
+  } catch (err) {
+    console.log('Wake lock not supported or failed:', err);
+  }
+};
+
+const releaseWakeLock = () => {
+  if (wakeLock) {
+    wakeLock.release();
+    wakeLock = null;
+    console.log('Screen wake lock manually released');
+  }
+};
+
 // Initialize audio context (required for iOS)
 const initAudioContext = () => {
   if (!audioContext) {
@@ -264,8 +290,12 @@ const App: React.FC = () => {
       if (newIsScanningActive) {
         setShowScanner(true);
         setLastProcessedId(null); // Reset debounce on new "start"
+        // Request wake lock to prevent screen sleep during scanning
+        requestWakeLock();
       } else {
         setShowScanner(false);
+        // Release wake lock when scanning stops
+        releaseWakeLock();
       }
       return newIsScanningActive;
     });
@@ -281,6 +311,13 @@ const App: React.FC = () => {
       setShowScanner(false);
     }
   }, [isScanningActive, showScanner, isLoading, apiResponseMessage, generalError]);
+
+  // Cleanup wake lock on component unmount
+  useEffect(() => {
+    return () => {
+      releaseWakeLock();
+    };
+  }, []);
 
 
 
@@ -383,6 +420,8 @@ const App: React.FC = () => {
             // It should stop the active scanning session.
             setIsScanningActive(false);
             setShowScanner(false);
+            // Release wake lock when scanner is closed
+            releaseWakeLock();
           }}
         />
       )}
