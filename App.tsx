@@ -258,7 +258,7 @@ const App: React.FC = () => {
     if (id === lastProcessedId) {
       displayMessage(`🔄 Duplicate: ID "${id}" was just processed. Ignoring duplicate scan.`, 'already registered');
       setIsLoading(false);
-      setLastProcessedId(null); // Reset to allow next distinct scan
+      // Do not reset lastProcessedId here - keep it set to prevent infinite loops
       if (isScanningActive) setTimeout(() => setShowScanner(true), WARNING_MESSAGE_DURATION);
       return;
     }
