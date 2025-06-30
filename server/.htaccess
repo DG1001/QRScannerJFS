@@ -12,7 +12,22 @@ Header set Access-Control-Allow-Headers "Content-Type, X-API-Token"
     Require all denied
 </Files>
 
-# Block access to registered_ids.json
+# Block access to database configuration file
+<Files ".dbconfig">
+    Require all denied
+</Files>
+
+# Block access to database config example (contains structure info)
+<Files ".dbconfig.example">
+    Require all denied
+</Files>
+
+# Block access to registered_ids.json (legacy file, may still exist)
 <Files "registered_ids.json">
+    Require all denied
+</Files>
+
+# Block access to any JSON backup files
+<Files "*.json.backup">
     Require all denied
 </Files>
