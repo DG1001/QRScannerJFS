@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:github.com)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npx pwa-asset-generator:*)",
+      "Bash(convert:*)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }
