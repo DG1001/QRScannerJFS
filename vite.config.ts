@@ -5,7 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
-      base: './',
+      base: '/QRScannerJFS/',
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
@@ -18,7 +18,10 @@ export default defineConfig(({ mode }) => {
       plugins: [
         VitePWA({
           registerType: 'autoUpdate',
-          includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'logo.png'],
+          includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'logo.png', 'icon-*.png'],
+          devOptions: {
+            enabled: true
+          },
           manifest: {
             name: 'QR Check-in Scanner',
             short_name: 'QR Scanner',
@@ -26,8 +29,9 @@ export default defineConfig(({ mode }) => {
             theme_color: '#0f172a',
             background_color: '#0f172a',
             display: 'standalone',
-            scope: '/',
-            start_url: '/',
+            scope: '/QRScannerJFS/',
+            start_url: '/QRScannerJFS/',
+            lang: 'en',
             icons: [
               {
                 src: 'icon-72x72.png',
