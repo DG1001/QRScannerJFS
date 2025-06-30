@@ -58,24 +58,61 @@ const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onScanError, onRequest
           let initialIndex = 0;
           const preferredCameraId = localStorage.getItem(PREFERRED_CAMERA_ID_KEY);
           
+          // Enhanced back camera detection function
+          const findBackCamera = (cameras: any[]) => {
+            // Try multiple detection methods for back camera
+            return cameras.findIndex(cam => {
+              const label = cam.label.toLowerCase();
+              // Common back camera identifiers
+              return label.includes('back') || 
+                     label.includes('rear') || 
+                     label.includes('environment') ||
+                     label.includes('hauptkamera') || // German
+                     label.includes('trasera') || // Spanish
+                     label.includes('arrière') || // French
+                     // On many devices, camera 0 is back, camera 1 is front
+                     (cam.id === '0' && !label.includes('front')) ||
+                     // Sometimes labeled as "camera2 0,facing back"
+                     label.includes('facing back');
+            });
+          };
+
+          const findFrontCamera = (cameras: any[]) => {
+            return cameras.findIndex(cam => {
+              const label = cam.label.toLowerCase();
+              return label.includes('front') || 
+                     label.includes('user') ||
+                     label.includes('selfie') ||
+                     label.includes('frontkamera') || // German
+                     label.includes('frontal') || // Spanish
+                     label.includes('avant') || // French
+                     label.includes('facing front');
+            });
+          };
+
           if (preferredCameraId) {
             const preferredCameraIdx = cameras.findIndex(cam => cam.id === preferredCameraId);
             if (preferredCameraIdx !== -1) {
               initialIndex = preferredCameraIdx;
             } else {
-              // Preferred camera not found, remove from storage and use default logic
+              // Preferred camera not found, remove from storage and prioritize back camera
               localStorage.removeItem(PREFERRED_CAMERA_ID_KEY);
-              const backCameraIdx = cameras.findIndex(cam => cam.label.toLowerCase().includes('back') || cam.label.toLowerCase().includes('rear'));
-              const frontCameraIdx = cameras.findIndex(cam => cam.label.toLowerCase().includes('front'));
+              const backCameraIdx = findBackCamera(cameras);
+              const frontCameraIdx = findFrontCamera(cameras);
               if (backCameraIdx !== -1) initialIndex = backCameraIdx;
               else if (frontCameraIdx !== -1) initialIndex = frontCameraIdx;
+              // If neither found, use first available camera (index 0)
             }
           } else {
-            // No preferred camera, use default logic
-            const backCameraIdx = cameras.findIndex(cam => cam.label.toLowerCase().includes('back') || cam.label.toLowerCase().includes('rear'));
-            const frontCameraIdx = cameras.findIndex(cam => cam.label.toLowerCase().includes('front'));
-            if (backCameraIdx !== -1) initialIndex = backCameraIdx;
-            else if (frontCameraIdx !== -1) initialIndex = frontCameraIdx;
+            // No preferred camera - ALWAYS prioritize back camera
+            const backCameraIdx = findBackCamera(cameras);
+            const frontCameraIdx = findFrontCamera(cameras);
+            if (backCameraIdx !== -1) {
+              initialIndex = backCameraIdx;
+            } else if (frontCameraIdx !== -1) {
+              initialIndex = frontCameraIdx;
+            }
+            // If neither found, use first available camera (index 0)
           }
           setSelectedCameraIndex(initialIndex);
         } else {
