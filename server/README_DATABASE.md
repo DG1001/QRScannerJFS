@@ -9,9 +9,15 @@ The backend has been converted from JSON file storage to MySQL database storage 
 
 ## Setup Instructions
 
-### 1. Create Database and User
+### Option A: Use Existing Database (Recommended)
 
-Run the SQL script to set up the database:
+If you already have a MySQL database with a user that has SELECT, INSERT, UPDATE, DELETE permissions, you can skip database creation and jump directly to configuration.
+
+**Just configure the connection (see step 2 below)** - the required table will be created automatically on the first API call.
+
+### Option B: Create New Database and User
+
+If you need to create everything from scratch, run the SQL script:
 
 ```bash
 mysql -u root -p < setup_database.sql
@@ -31,7 +37,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON qr_checkin.* TO 'qr_user'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-### 2. Configure Database Connection
+## Configure Database Connection (Required for both options)
 
 1. Copy the example config file:
    ```bash
@@ -41,10 +47,10 @@ FLUSH PRIVILEGES;
 2. Edit `.dbconfig` with your database credentials:
    ```json
    {
-     "host": "localhost",
-     "database": "qr_checkin", 
-     "username": "qr_user",
-     "password": "your_strong_password"
+     "host": "your_database_host",
+     "database": "your_database_name", 
+     "username": "your_username",
+     "password": "your_password"
    }
    ```
 
@@ -53,9 +59,11 @@ FLUSH PRIVILEGES;
    chmod 600 .dbconfig
    ```
 
-### 3. Table Structure
+## Table Creation (Automatic)
 
-The table will be automatically created by the PHP script, but here's the structure:
+**No manual table creation needed!** The table will be automatically created on the first API call using the `CREATE TABLE IF NOT EXISTS` statement.
+
+Here's the table structure that will be created:
 
 ```sql
 CREATE TABLE registered_ids (
@@ -73,6 +81,15 @@ CREATE TABLE registered_ids (
 - **Index optimization**: Fast lookups with indexed scanned_id column
 - **Connection security**: PDO with proper error handling and security settings
 - **Config file protection**: Database credentials stored in separate file
+
+## Quick Start Summary
+
+For existing database users:
+
+1. **Copy config**: `cp .dbconfig.example .dbconfig`
+2. **Edit credentials** in `.dbconfig` with your database details
+3. **Set permissions**: `chmod 600 .dbconfig`
+4. **Done!** - Table will be created automatically on first use
 
 ## Migration from JSON
 
