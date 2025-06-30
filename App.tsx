@@ -170,6 +170,10 @@ const App: React.FC = () => {
     return localStorage.getItem('wake_lock_enabled') === 'true';
   });
 
+  // PWA Install prompt state
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState<boolean>(false);
+
   const messageTimeoutRef = useRef<number | null>(null);
 
   const toggleWakeLock = useCallback(() => {
@@ -341,6 +345,55 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // PWA Install prompt handling
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallPrompt(true);
+    };
+
+    const handleAppInstalled = () => {
+      setShowInstallPrompt(false);
+      setDeferredPrompt(null);
+      console.log('PWA was installed');
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    // Check if app is already installed
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+      setShowInstallPrompt(false);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      console.log('User accepted the install prompt');
+    } else {
+      console.log('User dismissed the install prompt');
+    }
+    
+    setDeferredPrompt(null);
+    setShowInstallPrompt(false);
+  };
+
+  const dismissInstallPrompt = () => {
+    setShowInstallPrompt(false);
+    localStorage.setItem('install_prompt_dismissed', 'true');
+  };
+
 
 
 
@@ -427,6 +480,30 @@ const App: React.FC = () => {
             />
           </button>
         </div>
+
+        {/* PWA Install Prompt */}
+        {showInstallPrompt && (
+          <div className="flex items-center justify-between p-3 bg-sky-900/50 rounded-md border border-sky-600">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-sky-200">📱 Install App</span>
+              <span className="text-xs text-sky-300">Add to home screen for better experience</span>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={handleInstallClick}
+                className="px-3 py-1 bg-sky-600 text-white text-sm rounded hover:bg-sky-500 transition-colors"
+              >
+                Install
+              </button>
+              <button
+                onClick={dismissInstallPrompt}
+                className="px-2 py-1 text-sky-300 text-sm hover:text-sky-200 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
         
         {isLoading && <LoadingSpinner />}
 
