@@ -15,10 +15,30 @@ const MESSAGE_DISPLAY_DURATION = 3000; // 3 seconds
 const SUCCESS_MESSAGE_DURATION = 5000; // 5 seconds for success messages
 const WARNING_MESSAGE_DURATION = 4000; // 4 seconds for warning messages
 
+// Global audio context for iOS compatibility
+let audioContext: AudioContext | null = null;
+
+// Initialize audio context (required for iOS)
+const initAudioContext = () => {
+  if (!audioContext) {
+    try {
+      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      // iOS requires audio context to be resumed after user interaction
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+    } catch (e) {
+      console.log('Audio context creation failed');
+    }
+  }
+};
+
 // Audio feedback functions
 const playSuccessSound = () => {
   try {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (!audioContext) initAudioContext();
+    if (!audioContext || audioContext.state !== 'running') return;
+    
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
     
@@ -33,13 +53,15 @@ const playSuccessSound = () => {
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + 0.3);
   } catch (e) {
-    console.log('Audio not supported');
+    console.log('Audio playback failed');
   }
 };
 
 const playWarningSound = () => {
   try {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (!audioContext) initAudioContext();
+    if (!audioContext || audioContext.state !== 'running') return;
+    
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
     
@@ -54,13 +76,15 @@ const playWarningSound = () => {
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + 0.4);
   } catch (e) {
-    console.log('Audio not supported');
+    console.log('Audio playback failed');
   }
 };
 
 const playErrorSound = () => {
   try {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (!audioContext) initAudioContext();
+    if (!audioContext || audioContext.state !== 'running') return;
+    
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
     
@@ -76,7 +100,7 @@ const playErrorSound = () => {
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + 0.5);
   } catch (e) {
-    console.log('Audio not supported');
+    console.log('Audio playback failed');
   }
 };
 
@@ -93,6 +117,9 @@ const App: React.FC = () => {
   });
 
   const handlePinVerified = useCallback(() => {
+    // Initialize audio context on PIN verification (user interaction for iOS)
+    initAudioContext();
+    
     setIsPinVerified(true);
     localStorage.setItem('pin_verified', 'true');
   }, []);
@@ -228,6 +255,9 @@ const App: React.FC = () => {
   }, [isScanningActive, displayMessage]);
 
   const toggleScanning = () => {
+    // Initialize audio context on first user interaction (required for iOS)
+    initAudioContext();
+    
     clearMessage();
     setIsScanningActive(prev => {
       const newIsScanningActive = !prev;
