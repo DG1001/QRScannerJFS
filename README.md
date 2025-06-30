@@ -1,5 +1,9 @@
 # QR Check-in Scanner
 
+<div align="center">
+  <img src="public/logo.png" alt="JFS 2025 Logo" width="200" />
+</div>
+
 This is a simple web-based QR code scanner application built with React, TypeScript, and Vite. It allows users to scan QR codes and send the extracted ID to a PHP backend for validation and check-in.
 
 ## Features
