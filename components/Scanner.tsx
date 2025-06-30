@@ -170,7 +170,8 @@ const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onScanError, onRequest
             qrbox: (viewfinderWidth, viewfinderHeight) => {
               const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
               const qrboxSize = Math.max(200, Math.floor(minEdge * 0.75));
-              return { width: qrboxSize, height: qrboxSize };
+              // Force square dimensions - ensure both width and height are exactly the same
+              return qrboxSize;
             },
           },
           (decodedText: string, result: Html5QrcodeResult) => {
