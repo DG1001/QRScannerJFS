@@ -442,6 +442,13 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-700 text-white flex flex-col items-center p-4 selection:bg-sky-500 selection:text-white">
       <header className="w-full max-w-md text-center my-8">
+        <div className="mb-4">
+          <img 
+            src="/QRScannerJFS/logo.png" 
+            alt="JFS 2025 Logo" 
+            className="w-24 h-24 mx-auto mb-4 opacity-90"
+          />
+        </div>
         <h1 className="text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-blue-500">QR Check-in</h1>
         <p className="text-slate-400 mt-2">Continuous QR code scanning.</p>
       </header>
@@ -548,7 +555,9 @@ const App: React.FC = () => {
         />
       )}
       <footer className="w-full max-w-md text-center text-slate-500 mt-auto py-6 text-sm">
-        QR Check-in App &copy; {new Date().getFullYear()}
+        QR Check-in App &copy; {new Date().getFullYear()} MeiLuft
+        <br />
+        <span className="text-xs text-slate-600 mt-1 block">Licensed under MIT License</span>
       </footer>
     </div>
   );

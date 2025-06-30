@@ -104,3 +104,9 @@ To use it:
 3.  Navigate to the "Stress Test: Check-in Multiple IDs" section.
 4.  Configure the number of IDs to generate (e.g., `TEST0001` to `TESTxxxx`) and the pause between requests.
 5.  Click "Start Stress Test" to begin the simulation.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+**Copyright (c) 2025 MeiLuft**
