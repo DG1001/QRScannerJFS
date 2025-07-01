@@ -555,7 +555,7 @@ const App: React.FC = () => {
         />
       )}
       <footer className="w-full max-w-md text-center text-slate-500 mt-auto py-6 text-sm">
-        QR Check-in App &copy; {new Date().getFullYear()} MeiLuft
+        QR Check-in App v{import.meta.env.VITE_APP_VERSION || '1.0.0'} &copy; {new Date().getFullYear()} MeiLuft
         <br />
         <span className="text-xs text-slate-600 mt-1 block">Licensed under MIT License</span>
       </footer>
