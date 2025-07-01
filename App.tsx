@@ -12,7 +12,7 @@ import { XCircleIcon } from './components/icons/XCircleIcon';
 import PinInput from './components/PinInput'; // Import the new PinInput component
 
 const MESSAGE_DISPLAY_DURATION = 3000; // 3 seconds
-const SUCCESS_MESSAGE_DURATION = 5000; // 5 seconds for success messages
+const SUCCESS_MESSAGE_DURATION = 2500; // 2,5 seconds for success messages
 const WARNING_MESSAGE_DURATION = 4000; // 4 seconds for warning messages
 
 // Global audio context for iOS compatibility
