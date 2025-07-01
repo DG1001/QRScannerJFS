@@ -40,6 +40,11 @@ jobs:
       - name: Build application
         run: npm run build
 
+      - name: Add no-cache files
+        run: |
+          echo "" > ./dist/.nojekyll
+          echo "Cache-Control: no-cache, no-store, must-revalidate" > ./dist/_headers
+
       - name: Check for unprocessed env variables in build output
         run: |
           echo "Searching for VITE_API_URL string in dist folder..."

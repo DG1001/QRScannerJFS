@@ -92,12 +92,15 @@ export default defineConfig(({ mode }) => {
             runtimeCaching: [
               {
                 urlPattern: /^https:\/\/.*\.(?:js|css|html|png|svg|ico)$/,
-                handler: 'CacheFirst',
+                handler: 'NetworkFirst',
                 options: {
                   cacheName: 'static-resources',
                   expiration: {
                     maxEntries: 50,
-                    maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
+                    maxAgeSeconds: 24 * 60 * 60 // 1 day
+                  },
+                  cacheKeyWillBeUsed: async ({ request }) => {
+                    return `${request.url}?t=${Date.now()}`;
                   }
                 }
               },
