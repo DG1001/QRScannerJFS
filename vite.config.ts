@@ -98,9 +98,6 @@ export default defineConfig(({ mode }) => {
                   expiration: {
                     maxEntries: 50,
                     maxAgeSeconds: 24 * 60 * 60 // 1 day
-                  },
-                  cacheKeyWillBeUsed: async ({ request }) => {
-                    return `${request.url}?t=${Date.now()}`;
                   }
                 }
               },
