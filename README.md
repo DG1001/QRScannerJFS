@@ -40,8 +40,8 @@ This is a simple web-based QR code scanner application built with React, TypeScr
     Create a file named `.env` in the root of the project and add the following environment variables:
 
     ```
-    VITE_API_URL=https://kirsten-controls.de/jfs/qr.php
-    VITE_TOKEN=7382b853-ca0a-4760-aff0-1515afcb2dcd
+    VITE_API_URL=https://example.com/api/qr.php?action=checkin
+    VITE_TOKEN=your-api-token-here
     VITE_PIN_CODE=1234 # A 4-digit code for initial app access
     ```
 
