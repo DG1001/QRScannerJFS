@@ -61,7 +61,7 @@ This project includes a GitHub Actions workflow to automatically build and deplo
 
 Before the workflow can run successfully, you must add the following secrets to your GitHub repository settings (`Settings` > `Secrets and variables` > `Actions`):
 
--   `VITE_API_URL`: The full base URL to your check-in API endpoint (e.g., `https://www.your-domain.com/qr.php`).
+-   `VITE_API_URL`: The full base URL to your check-in API endpoint (e.g., `https://example.com/api/qr.php?action=checkin`).
 -   `VITE_TOKEN`: The API token for your backend.
 -   `VITE_PIN_CODE`: A 4-digit code that the user must enter on first use of the scanner. This is stored in local browser memory.
 
