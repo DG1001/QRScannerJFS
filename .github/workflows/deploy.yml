@@ -6,29 +6,10 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  check-commit:
-    runs-on: ubuntu-latest
-    outputs:
-      should-skip: ${{ steps.check.outputs.should-skip }}
-    steps:
-      - name: Check commit message
-        id: check
-        run: |
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
-          if [[ "$COMMIT_MSG" == *"automate version increment"* ]] || [[ "$COMMIT_MSG" == *"[skip ci]"* ]] || [[ "$COMMIT_MSG" == *"[ci skip]"* ]]; then
-            echo "should-skip=true" >> $GITHUB_OUTPUT
-            echo "Skipping workflow - this is a version increment or skip ci commit"
-          else
-            echo "should-skip=false" >> $GITHUB_OUTPUT
-            echo "Proceeding with workflow"
-          fi
-
   build-and-deploy:
-    needs: check-commit
-    if: needs.check-commit.outputs.should-skip != 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -40,43 +21,31 @@ jobs:
         with:
           node-version: '20' # Using a recent LTS version
 
-      - name: Increment version and create .env file
+      - name: Increment build number and create .env file
         run: |
-          # Get current version and increment patch number
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          echo "Current version: $CURRENT_VERSION"
+          # Get current build number from GitHub variable (default to 0 if not set)
+          CURRENT_BUILD="${{ vars.BUILD_NUMBER || '0' }}"
+          echo "Current build number: $CURRENT_BUILD"
           
-          # Split version into parts and increment patch
-          IFS='.' read -ra PARTS <<< "$CURRENT_VERSION"
-          MAJOR=${PARTS[0]}
-          MINOR=${PARTS[1]}
-          PATCH=${PARTS[2]}
-          NEW_PATCH=$((PATCH + 1))
-          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          # Increment build number
+          NEW_BUILD=$((CURRENT_BUILD + 1))
           
-          echo "New version: $NEW_VERSION"
+          # Create version string (keeping major.minor from package.json)
+          BASE_VERSION=$(node -p "require('./package.json').version.split('.').slice(0,2).join('.')")
+          NEW_VERSION="$BASE_VERSION.$NEW_BUILD"
           
-          # Update package.json with new version
-          npm version $NEW_VERSION --no-git-tag-version
+          echo "New version: $NEW_VERSION (build $NEW_BUILD)"
           
-          # Create .env file with version
+          # Update the GitHub variable for next run
+          gh variable set BUILD_NUMBER --body "$NEW_BUILD"
+          
+          # Create .env file with all required variables
           echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" >> .env
           echo "VITE_TOKEN=${{ secrets.VITE_TOKEN }}" >> .env
           echo "VITE_PIN_CODE=${{ secrets.VITE_PIN_CODE }}" >> .env
           echo "VITE_APP_VERSION=$NEW_VERSION" >> .env
-
-      - name: Commit version increment
-        run: |
-          # Configure git
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          
-          # Add and commit the updated package.json
-          git add package.json
-          git commit -m "feat(ci): automate version increment to $(node -p "require('./package.json').version") [skip ci]"
-          
-          # Push the changes back to the repository
-          git push
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
         run: npm install
