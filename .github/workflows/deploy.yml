@@ -9,7 +9,26 @@ permissions:
   contents: write
 
 jobs:
+  check-commit:
+    runs-on: ubuntu-latest
+    outputs:
+      should-skip: ${{ steps.check.outputs.should-skip }}
+    steps:
+      - name: Check commit message
+        id: check
+        run: |
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          if [[ "$COMMIT_MSG" == *"automate version increment"* ]] || [[ "$COMMIT_MSG" == *"[skip ci]"* ]] || [[ "$COMMIT_MSG" == *"[ci skip]"* ]]; then
+            echo "should-skip=true" >> $GITHUB_OUTPUT
+            echo "Skipping workflow - this is a version increment or skip ci commit"
+          else
+            echo "should-skip=false" >> $GITHUB_OUTPUT
+            echo "Proceeding with workflow"
+          fi
+
   build-and-deploy:
+    needs: check-commit
+    if: needs.check-commit.outputs.should-skip != 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -45,6 +64,19 @@ jobs:
           echo "VITE_TOKEN=${{ secrets.VITE_TOKEN }}" >> .env
           echo "VITE_PIN_CODE=${{ secrets.VITE_PIN_CODE }}" >> .env
           echo "VITE_APP_VERSION=$NEW_VERSION" >> .env
+
+      - name: Commit version increment
+        run: |
+          # Configure git
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Add and commit the updated package.json
+          git add package.json
+          git commit -m "feat(ci): automate version increment to $(node -p "require('./package.json').version") [skip ci]"
+          
+          # Push the changes back to the repository
+          git push
 
       - name: Install dependencies
         run: npm install
