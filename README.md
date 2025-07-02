@@ -9,9 +9,8 @@
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/DG1001/QRScannerJFS/deploy.yml?branch=main&label=build%20%26%20deploy&logo=github)
 ![GitHub last commit](https://img.shields.io/github/last-commit/DG1001/QRScannerJFS?label=last%20update&logo=github)
 ![GitHub deployments](https://img.shields.io/github/deployments/DG1001/QRScannerJFS/github-pages?label=deployment&logo=github)
-![Demo](https://img.shields.io/badge/demo-live-green?logo=github&link=https%3A//DG1001.github.io/QRScannerJFS/)
 
-**Current Version: 1.0.{latest-build-number}** - Automatically updated with each deployment
+**Version**: Check the footer of the [live application](https://DG1001.github.io/QRScannerJFS/) - shows current build number (format: `1.0.X`)
 
 </div>
 
