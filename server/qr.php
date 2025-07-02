@@ -261,6 +261,25 @@ function add_rejected_id($id, $reason, $rejected_by = null) {
 }
 
 /**
+ * Get all rejected IDs from database
+ * @return array Array of rejected ID records
+ */
+function get_rejected_ids_from_db() {
+    $pdo = get_db_connection();
+    if (!$pdo) return [];
+    
+    try {
+        $stmt = $pdo->prepare("SELECT rejected_id, reason, rejected_at, rejected_by FROM rejected_ids ORDER BY rejected_at DESC");
+        $stmt->execute();
+        $results = $stmt->fetchAll();
+        return $results ?: [];
+    } catch (PDOException $e) {
+        error_log("DATABASE REJECTED SELECT ERROR: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
  * Reads the secret token from the server's token file.
  * @return string|false The token, or false if not found.
  */
@@ -382,6 +401,12 @@ switch ($action) {
         } else {
             send_json_response(['status' => 'error', 'message' => 'An unexpected error occurred while rejecting the ID.'], 500);
         }
+        break;
+
+    case 'rejected-ids':
+        if ($requestMethod !== 'GET') send_json_response(['status' => 'error', 'message' => 'Method Not Allowed.'], 405);
+        $rejectedIds = get_rejected_ids_from_db();
+        send_json_response($rejectedIds, 200);
         break;
 
     default:

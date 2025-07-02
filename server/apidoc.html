@@ -143,10 +143,38 @@
         <!-- Endpoint: Check-in -->
         <div class="endpoint-card">
             <h3><span class="method method-post">POST</span><code>/?action=checkin</code></h3>
-            <p>Submits a scanned ID to be validated and recorded as checked in.</p>
+            <p>Submits a scanned ID to be validated and recorded as checked in. The system checks for rejected IDs first, then duplicate registrations.</p>
             
             <h4>Request Body</h4>            <pre><code>{
   "id": "string_value_of_the_scanned_id"
+}</code></pre>
+
+            <h4>Response Formats</h4>
+            <p><strong>Success (Check-in):</strong></p>
+            <pre><code>{
+  "status": "ok",
+  "message": "ID 'example-id' checked in successfully."
+}</code></pre>
+            <p><strong>Already Registered:</strong></p>
+            <pre><code>{
+  "status": "already registered",
+  "message": "ID 'example-id' was already checked in."
+}</code></pre>
+            <p><strong>Rejected ID:</strong></p>
+            <pre><code>{
+  "status": "rejected",
+  "message": "ID 'example-id' has been rejected and cannot be used for check-in.",
+  "reason": "Fraudulent ID detected"
+}</code></pre>
+            <p><strong>ID Not Known:</strong></p>
+            <pre><code>{
+  "status": "id not known",
+  "message": "ID 'example-id' is not recognized."
+}</code></pre>
+            <p><strong>Error:</strong></p>
+            <pre><code>{
+  "status": "error",
+  "message": "Invalid request: ID has an invalid format."
 }</code></pre>
 
             <h4>cURL Example</h4>
@@ -270,6 +298,147 @@ print(f"Response: {response.json()}")</code></pre>
             <pre id="clear-response" class="response-area"></pre>
         </div>
 
+        <!-- Endpoint: Reject ID -->
+        <div class="endpoint-card">
+            <h3><span class="method method-post">POST</span><code>/?action=reject</code></h3>
+            <p>Adds an ID to the rejected list with a reason. Rejected IDs will be prevented from checking in and will return a "rejected" status with the provided reason.</p>
+            
+            <h4>Request Body</h4>
+            <pre><code>{
+  "id": "string_value_of_id_to_reject",
+  "reason": "string_reason_for_rejection",
+  "rejected_by": "optional_identifier_who_rejected" // Optional field
+}</code></pre>
+
+            <h4>Response Formats</h4>
+            <p><strong>Success:</strong></p>
+            <pre><code>{
+  "status": "ok",
+  "message": "ID 'example-id' has been added to the rejected list."
+}</code></pre>
+            <p><strong>Already Rejected:</strong></p>
+            <pre><code>{
+  "status": "error",
+  "message": "ID 'example-id' is already in the rejected list."
+}</code></pre>
+
+            <h4>cURL Example</h4>
+            <details>
+                <summary>Show cURL Example</summary>
+                <pre><code>curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "X-API-Token: YOUR_API_TOKEN" \
+  -d '{"id": "bad-id-123", "reason": "Fraudulent ID detected", "rejected_by": "admin"}' \
+  "YOUR_API_URL?action=reject"</code></pre>
+            </details>
+
+            <h4>Python Example</h4>
+            <details>
+                <summary>Show Python Example</summary>
+                <pre><code>import requests
+import json
+
+api_url = "YOUR_API_URL"
+api_token = "YOUR_API_TOKEN"
+
+headers = {
+    "Content-Type": "application/json",
+    "X-API-Token": api_token
+}
+
+# Reject an ID
+payload = {
+    "id": "bad-id-123",
+    "reason": "Fraudulent ID detected",
+    "rejected_by": "admin"  # Optional
+}
+
+response = requests.post(f"{api_url}?action=reject", headers=headers, data=json.dumps(payload))
+
+print(f"Status Code: {response.status_code}")
+print(f"Response: {response.json()}")</code></pre>
+            </details>
+
+            <h4>Interactive Test</h4>
+            <label for="reject-id">ID to Reject:</label>
+            <input type="text" id="reject-id" placeholder="e.g., bad-id-123">
+            
+            <label for="reject-reason" style="margin-top: 15px; display: block;">Rejection Reason:</label>
+            <input type="text" id="reject-reason" placeholder="e.g., Fraudulent ID detected">
+            
+            <label for="rejected-by" style="margin-top: 15px; display: block;">Rejected By (Optional):</label>
+            <input type="text" id="rejected-by" placeholder="e.g., admin">
+            
+            <button id="reject-btn">Send Request</button>
+            
+            <h4>Response</h4>
+            <pre id="reject-response" class="response-area"></pre>
+        </div>
+
+        <!-- Endpoint: Get Rejected IDs -->
+        <div class="endpoint-card">
+            <h3><span class="method method-get">GET</span><code>/?action=rejected-ids</code></h3>
+            <p>Retrieves a list of all rejected IDs with their rejection reasons, timestamps, and who rejected them.</p>
+
+            <h4>Response Format</h4>
+            <pre><code>[
+  {
+    "rejected_id": "bad-id-123",
+    "reason": "Fraudulent ID detected",
+    "rejected_at": "2025-01-02 10:30:15",
+    "rejected_by": "admin"
+  },
+  {
+    "rejected_id": "invalid-id-456",
+    "reason": "Invalid format",
+    "rejected_at": "2025-01-01 15:45:22",
+    "rejected_by": null
+  }
+]</code></pre>
+
+            <h4>cURL Example</h4>
+            <details>
+                <summary>Show cURL Example</summary>
+                <pre><code>curl -X GET \
+  -H "X-API-Token: YOUR_API_TOKEN" \
+  "YOUR_API_URL?action=rejected-ids"</code></pre>
+            </details>
+
+            <h4>Python Example</h4>
+            <details>
+                <summary>Show Python Example</summary>
+                <pre><code>import requests
+
+api_url = "YOUR_API_URL"
+api_token = "YOUR_API_TOKEN"
+
+headers = {
+    "X-API-Token": api_token
+}
+
+# Get rejected IDs
+response = requests.get(f"{api_url}?action=rejected-ids", headers=headers)
+
+print(f"Status Code: {response.status_code}")
+print(f"Response: {response.json()}")
+
+# Pretty print the rejected IDs
+rejected_ids = response.json()
+for rejected in rejected_ids:
+    print(f"ID: {rejected['rejected_id']}")
+    print(f"Reason: {rejected['reason']}")
+    print(f"Rejected at: {rejected['rejected_at']}")
+    print(f"Rejected by: {rejected['rejected_by'] or 'Unknown'}")
+    print("---")</code></pre>
+            </details>
+
+            <h4>Interactive Test</h4>
+            <button id="get-rejected-ids-btn">Send Request</button>
+
+            <h4>Response</h4>
+            <pre id="get-rejected-ids-response" class="response-area"></pre>
+        </div>
+
         <!-- Stress Test Section -->
         <div class="endpoint-card">
             <h2>Stress Test: Check-in Multiple IDs</h2>
@@ -376,6 +545,39 @@ print(f"Response: {response.json()}")</code></pre>
             if (confirm('Are you sure you want to permanently delete all registered IDs? This cannot be undone.')) {
                 sendApiRequest('clear', 'POST', null, 'clear-response');
             }
+        });
+
+        // Reject ID Button
+        document.getElementById('reject-btn').addEventListener('click', () => {
+            const idToReject = document.getElementById('reject-id').value;
+            const reason = document.getElementById('reject-reason').value;
+            const rejectedBy = document.getElementById('rejected-by').value;
+            
+            if (!idToReject) {
+                alert('Please enter an ID to reject.');
+                return;
+            }
+            if (!reason) {
+                alert('Please enter a rejection reason.');
+                return;
+            }
+            
+            const body = { 
+                id: idToReject, 
+                reason: reason
+            };
+            
+            // Add rejected_by field only if provided
+            if (rejectedBy) {
+                body.rejected_by = rejectedBy;
+            }
+            
+            sendApiRequest('reject', 'POST', body, 'reject-response');
+        });
+
+        // Get Rejected IDs Button
+        document.getElementById('get-rejected-ids-btn').addEventListener('click', () => {
+            sendApiRequest('rejected-ids', 'GET', null, 'get-rejected-ids-response');
         });
 
         // --- Stress Test Logic ---
