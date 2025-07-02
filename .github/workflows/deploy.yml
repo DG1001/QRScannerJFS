@@ -38,6 +38,7 @@ jobs:
           echo "VITE_TOKEN=${{ secrets.VITE_TOKEN }}" >> .env
           echo "VITE_PIN_CODE=${{ secrets.VITE_PIN_CODE }}" >> .env
           echo "VITE_APP_VERSION=$NEW_VERSION" >> .env
+          
 
       - name: Install dependencies
         run: npm install
