@@ -132,6 +132,37 @@ const playErrorSound = () => {
   }
 };
 
+const playRejectedSound = () => {
+  try {
+    if (!audioContext) initAudioContext();
+    if (!audioContext || audioContext.state !== 'running') return;
+    
+    // Create a distinctive "buzzer" pattern for rejected IDs
+    const createBuzz = (startTime: number, frequency: number, duration: number) => {
+      const oscillator = audioContext!.createOscillator();
+      const gainNode = audioContext!.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext!.destination);
+      
+      oscillator.frequency.setValueAtTime(frequency, startTime);
+      gainNode.gain.setValueAtTime(0.15, startTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+      
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration);
+    };
+    
+    // Create three rapid buzzer pulses
+    const currentTime = audioContext.currentTime;
+    createBuzz(currentTime, 400, 0.1);
+    createBuzz(currentTime + 0.15, 400, 0.1);
+    createBuzz(currentTime + 0.3, 400, 0.1);
+  } catch (e) {
+    console.log('Audio playback failed');
+  }
+};
+
 const App: React.FC = () => {
   // Read PIN code from environment variables
   const CORRECT_PIN = import.meta.env.VITE_PIN_CODE;
@@ -214,6 +245,8 @@ const App: React.FC = () => {
       playSuccessSound();
     } else if (status === 'already registered') {
       playWarningSound();
+    } else if (status === 'rejected') {
+      playRejectedSound();
     } else if (status === 'error' || status === 'id not known' || isError) {
       playErrorSound();
     }
@@ -277,6 +310,10 @@ const App: React.FC = () => {
         setScannedIdsLog(prevLog => new Set(prevLog).add(id));
         displayMessage(`✅ Checked In: ${id} - ${response.message}`, 'ok');
         setLastProcessedId(id);
+      } else if (response.status === 'rejected') {
+        const rejectionReason = response.reason || 'No reason provided';
+        displayMessage(`🚫 REJECTED: ID "${id}" - ${response.message}\n\nReason: ${rejectionReason}`, 'rejected', true);
+        setLastProcessedId(id); // Prevent re-scanning rejected IDs
       } else {
         displayMessage(`❌ Problem with ID "${id}": ${response.message}`, response.status, response.status === 'error');
          // Do not set lastProcessedId here if it's an API error or ID not known,

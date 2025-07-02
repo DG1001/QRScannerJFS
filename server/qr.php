@@ -82,7 +82,7 @@ function get_db_connection() {
 }
 
 /**
- * Initialize database table if it doesn't exist
+ * Initialize database tables if they don't exist
  * @return bool Success status
  */
 function init_database() {
@@ -90,14 +90,26 @@ function init_database() {
     if (!$pdo) return false;
     
     try {
-        $sql = "CREATE TABLE IF NOT EXISTS registered_ids (
+        // Create registered_ids table
+        $sql1 = "CREATE TABLE IF NOT EXISTS registered_ids (
             id INT AUTO_INCREMENT PRIMARY KEY,
             scanned_id VARCHAR(50) NOT NULL UNIQUE,
             registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_scanned_id (scanned_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
         
-        $pdo->exec($sql);
+        // Create rejected_ids table
+        $sql2 = "CREATE TABLE IF NOT EXISTS rejected_ids (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            rejected_id VARCHAR(50) NOT NULL UNIQUE,
+            reason TEXT NOT NULL,
+            rejected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            rejected_by VARCHAR(100) DEFAULT NULL,
+            INDEX idx_rejected_id (rejected_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+        
+        $pdo->exec($sql1);
+        $pdo->exec($sql2);
         return true;
     } catch (PDOException $e) {
         error_log("DATABASE INIT ERROR: " . $e->getMessage());
@@ -185,6 +197,70 @@ function clear_all_registered_ids() {
 }
 
 /**
+ * Check if ID is rejected
+ * @param string $id The ID to check
+ * @return bool True if rejected
+ */
+function is_id_rejected($id) {
+    $pdo = get_db_connection();
+    if (!$pdo) return false;
+    
+    try {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM rejected_ids WHERE rejected_id = ?");
+        $stmt->execute([$id]);
+        return $stmt->fetchColumn() > 0;
+    } catch (PDOException $e) {
+        error_log("DATABASE REJECTED CHECK ERROR: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Get rejection reason for an ID
+ * @param string $id The ID to get reason for
+ * @return string|false Rejection reason or false if not found
+ */
+function get_rejected_reason($id) {
+    $pdo = get_db_connection();
+    if (!$pdo) return false;
+    
+    try {
+        $stmt = $pdo->prepare("SELECT reason FROM rejected_ids WHERE rejected_id = ?");
+        $stmt->execute([$id]);
+        $result = $stmt->fetchColumn();
+        return $result ?: false;
+    } catch (PDOException $e) {
+        error_log("DATABASE REJECTED REASON ERROR: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Add new ID to rejected list
+ * @param string $id The ID to reject
+ * @param string $reason The rejection reason
+ * @param string|null $rejected_by Optional identifier of who rejected it
+ * @return bool Success status
+ */
+function add_rejected_id($id, $reason, $rejected_by = null) {
+    $pdo = get_db_connection();
+    if (!$pdo) return false;
+    
+    try {
+        $stmt = $pdo->prepare("INSERT INTO rejected_ids (rejected_id, reason, rejected_by) VALUES (?, ?, ?)");
+        $stmt->execute([$id, $reason, $rejected_by]);
+        return true;
+    } catch (PDOException $e) {
+        if ($e->getCode() == 23000) { // Duplicate entry
+            error_log("DATABASE DUPLICATE REJECTED: ID '{$id}' already rejected");
+            return false;
+        }
+        error_log("DATABASE REJECTED INSERT ERROR: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
  * Reads the secret token from the server's token file.
  * @return string|false The token, or false if not found.
  */
@@ -245,6 +321,16 @@ switch ($action) {
             send_json_response(['status' => 'id not known', 'message' => "ID '{$scannedId}' is not recognized."], 404);
         }
 
+        // Check if ID is rejected first
+        if (is_id_rejected($scannedId)) {
+            $rejectionReason = get_rejected_reason($scannedId);
+            send_json_response([
+                'status' => 'rejected', 
+                'message' => "ID '{$scannedId}' has been rejected and cannot be used for check-in.",
+                'reason' => $rejectionReason ?: 'No reason provided.'
+            ], 200);
+        }
+
         if (is_id_registered($scannedId)) {
             send_json_response(['status' => 'already registered', 'message' => "ID '{$scannedId}' was already checked in."], 200);
         }
@@ -268,6 +354,33 @@ switch ($action) {
             send_json_response(['status' => 'ok', 'message' => 'All registered IDs have been cleared.'], 200);
         } else {
             send_json_response(['status' => 'error', 'message' => 'Failed to clear the list of registered IDs.'], 500);
+        }
+        break;
+
+    case 'reject':
+        if ($requestMethod !== 'POST') send_json_response(['status' => 'error', 'message' => 'Method Not Allowed.'], 405);
+        $requestBody = json_decode(file_get_contents('php://input'), true);
+        $rejectedId = isset($requestBody['id']) ? trim($requestBody['id']) : '';
+        $reason = isset($requestBody['reason']) ? trim($requestBody['reason']) : '';
+        $rejectedBy = isset($requestBody['rejected_by']) ? trim($requestBody['rejected_by']) : null;
+
+        if (empty($rejectedId) || !preg_match(ID_REGEX, $rejectedId)) {
+            send_json_response(['status' => 'error', 'message' => 'Invalid request: ID has an invalid format.'], 400);
+        }
+
+        if (empty($reason)) {
+            send_json_response(['status' => 'error', 'message' => 'Invalid request: Rejection reason is required.'], 400);
+        }
+
+        // Check if ID is already rejected
+        if (is_id_rejected($rejectedId)) {
+            send_json_response(['status' => 'error', 'message' => "ID '{$rejectedId}' is already in the rejected list."], 200);
+        }
+
+        if (add_rejected_id($rejectedId, $reason, $rejectedBy)) {
+            send_json_response(['status' => 'ok', 'message' => "ID '{$rejectedId}' has been added to the rejected list."], 200);
+        } else {
+            send_json_response(['status' => 'error', 'message' => 'An unexpected error occurred while rejecting the ID.'], 500);
         }
         break;
 
