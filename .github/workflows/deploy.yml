@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  actions: write
 
 jobs:
   build-and-deploy:
@@ -22,31 +21,23 @@ jobs:
         with:
           node-version: '20' # Using a recent LTS version
 
-      - name: Increment build number and create .env file
+      - name: Create version and .env file
         run: |
-          # Get current build number from GitHub variable (default to 0 if not set)
-          CURRENT_BUILD="${{ vars.BUILD_NUMBER || '0' }}"
-          echo "Current build number: $CURRENT_BUILD"
-          
-          # Increment build number
-          NEW_BUILD=$((CURRENT_BUILD + 1))
+          # Use GitHub's built-in run number as build number
+          BUILD_NUMBER="${{ github.run_number }}"
+          echo "Build number: $BUILD_NUMBER (GitHub run #$BUILD_NUMBER)"
           
           # Create version string (keeping major.minor from package.json)
           BASE_VERSION=$(node -p "require('./package.json').version.split('.').slice(0,2).join('.')")
-          NEW_VERSION="$BASE_VERSION.$NEW_BUILD"
+          NEW_VERSION="$BASE_VERSION.$BUILD_NUMBER"
           
-          echo "New version: $NEW_VERSION (build $NEW_BUILD)"
-          
-          # Update the GitHub variable for next run
-          gh variable set BUILD_NUMBER --body "$NEW_BUILD"
+          echo "New version: $NEW_VERSION"
           
           # Create .env file with all required variables
           echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" >> .env
           echo "VITE_TOKEN=${{ secrets.VITE_TOKEN }}" >> .env
           echo "VITE_PIN_CODE=${{ secrets.VITE_PIN_CODE }}" >> .env
           echo "VITE_APP_VERSION=$NEW_VERSION" >> .env
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
         run: npm install
